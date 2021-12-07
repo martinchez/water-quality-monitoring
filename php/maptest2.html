@@ -1,0 +1,155 @@
+!DOCTYPE html>
+<meta http-equiv="X-UA-Compatible" content="IE=Edge">
+<html>
+<head>
+    <meta http-equiv="Access-Control-Allow-Origin" content="*">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Graffiti - Glenorchy City Council</title>        
+
+    <script type="text/javascript" src="src/leaflet/leaflet.js"></script>
+    <link type="text/css" rel="stylesheet" href="src/leaflet/leaflet.css" />
+    <script src="src/listBaseLayers.js" type="text/javascript"></script>
+    <script src="src/leaflet/gcc_config.js" type="text/javascript"></script>
+
+    <link rel="stylesheet" href="css/jquery.mobile-1.1.1.min.css" />
+    <link rel="stylesheet" href="src/leaflet/locate/L.Control.Locate.css" />
+    <link rel="stylesheet" href="css/main.css" />
+    <link rel="stylesheet" href="css/nps.css" />
+    <link rel="stylesheet" href="src/leaflet/gcc_geosearch/l.gcc_geosearch.css" />
+    <link rel="stylesheet" href="src/leaflet/cluster/MarkerCluster.css" />
+    <link rel="stylesheet" href="src/leaflet/cluster/MarkerCluster.Default.css" />
+    
+    <!-- [if lt IE 9]> -->
+     <link rel="stylesheet" href="src/leaflet/locate/L.Control.Locate.ie.css" />
+     <link rel="stylesheet" href="src/leaflet/gcc_geosearch/l.gcc_geosearch.ie.css" />
+     <link rel="stylesheet" href="css/ie6.css" type="text/css" />
+     <link rel="stylesheet" href="src/leaflet/cluster/MarkerCluster.Default.ie.css" />
+    <!-- ![endif] -->
+
+    <script src="src/leaflet/gcc_geosearch/gcc_geosearch.js"></script>
+    <script src="src/leaflet/locate/L.Control.Locate.js"></script>
+    <script src="src/jquery/jquery-1.7.1.min.js"></script>
+    <script src="https://maps.googleapis.com/maps/api/js?sensor=false&libraries=places"></script>
+    <script src="src/leaflet/cluster/leaflet.markercluster.js"></script>
+    <script src="src/leaflet/leaflet.spin.js"></script>
+    <script src="src/leaflet/spin.min.js"></script>
+    <style>
+	    body {
+		    padding: 0;
+		    margin: 0;
+	    }
+	    html, body, #map {
+		    height: 100%;
+	    }
+    </style>
+</head>
+<body>    
+	<div id="map"></div>
+</body>
+    <script>
+    var center = new L.LatLng(-42.8232,147.2555);
+    var map = new L.Map('map', { center: center, zoom: 14, attributionControl:true, zoomControl:false, minZoom:11});    
+    
+    var baselayers = {
+        "LIST Aerial Imagery": LISTAerial,
+        "LIST Topographic": LISTTopographic
+    };    
+    map.addLayer(LISTTopographic)
+
+    //Location control
+    L.control.locate({
+        position: 'topright',  
+        drawCircle: false,
+        follow: false
+    }).addTo(map);
+    //Zoom control
+    L.control.zoom().addTo(map);    
+    //Layer control
+    
+    //Search control
+    L.control.searchControl().addTo(map);
+    
+    var query = "SELECT * from 1HvAi__NHaSRa2loeuueRNLlKmqqF3piZRxeF-mo";
+    var encodedQuery = encodeURIComponent(query);
+
+    // Construct the URL
+    var url = ['https://www.googleapis.com/fusiontables/v1/query'];
+    url.push('?sql=' + encodedQuery);
+    url.push('&key=AIzaSyBsyyYiL6ZYEVidzNIiUHz4h-mWIV7f5T4');
+    url.push('&callback=?');
+
+    // Send the JSONP request using jQuery
+    var allMarkers = new L.MarkerClusterGroup();
+    var thisMonthMarkers = new L.MarkerClusterGroup();
+    var threeMonthMarkers = new L.MarkerClusterGroup();
+
+    var overlays = {
+        "All Graffiti Incidents": allMarkers,
+        "Graffiti from last month": thisMonthMarkers,
+        "Graffiti from three months": threeMonthMarkers
+    };
+    L.control.layers(baselayers, overlays, {position: 'topleft'}).addTo(map);
+    function definePopup(entry) {
+        var popupText =  "<b>Location Description: </b>"+entry[2]+"<br>"+
+                    "<b>Work Date: </b>"+entry[3]+"<br>"+
+                    "<b>Graffiti Type: </b>"+entry[5]+"<br>"+
+                    "<b>Graffiti Material: </b>"+entry[6]+"<br>"+
+                    "<b>Image: </b><a href='"+entry[0]+"' target=\"_blank\">"+"<img src='"+entry[0]+"&previewImage=true'</img></a>";
+        return popupText;
+    }
+    map.spin(true);
+
+    var graf = null;
+    $.ajax({
+      url: url.join(''),
+      dataType: 'jsonp',
+      success: function (data) {
+        for (var i = 0; i < data.rows.length; i++) {
+            entry = data.rows[i];
+            var dSplit = entry[3].split('/');
+            var Days = Math.floor((new Date().getTime() -  new Date(dSplit[2],dSplit[0]-1,dSplit[1]).getTime())/(1000*60*60*24));
+
+            var thisLayer = L.geoJson(entry[1]['geometry'])
+                .bindPopup(
+                    definePopup(entry)
+                    );
+            
+            allMarkers.addLayer(thisLayer);
+            if(Days < 31) {
+                thisMonthMarkers.addLayer(L.geoJson(entry[1]['geometry'])
+                .bindPopup(
+                    definePopup(entry)
+                ));
+            };
+            if(Days < 93) {
+                threeMonthMarkers.addLayer(L.geoJson(entry[1]['geometry'])
+                .bindPopup(
+                    definePopup(entry) 
+                ));
+            }
+        };
+        graf = data;
+    }
+    })
+    .done(function() {
+        map.spin(false);
+      })
+    .error(function () {
+        map.spin(false);
+      });
+    map.addLayer(allMarkers);
+    
+    </script>
+
+    <script type="text/javascript">
+	//Analytics
+	var _gaq = _gaq || [];
+	_gaq.push(['_setAccount', 'UA-36489204-2']);
+	_gaq.push(['_trackPageview']);	  
+	(function() {
+	  var ga = document.createElement('script'); ga.type = 'text/javascript'; ga.async = true;
+	  ga.src = ('https:' == document.location.protocol ? 'https://ssl' : 'http://www') + '.google-analytics.com/ga.js';
+	  var s = document.getElementsByTagName('script')[0]; s.parentNode.insertBefore(ga, s);
+	})();
+    </script>
+</html>

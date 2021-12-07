@@ -1,0 +1,78 @@
+reads barometric pressure, temperature and humidity
+12c interface
+3 operation modes
+-> sleep mode - no operation,all registers accessible,lowest power
+-> normal mode - perpetual cycling of measurement and inactive modes
+-> forced mode - perform one measurement store result and return to sleep mode
+
+
+
+global memory map and register description
+
+Registers
+~~~~~~~~~~
+\\\\\\\\\
+~~~~~~~~~~
+8 bit registers
+---------------
+data registers
+Register          reset state
+hum_lsb - 0xFE -  0x00
+hum_msb - 0XFD -  0x00
+
+status registers
+----------------
+register 0xF3 -> contains 2 bits which indicate the status of the device
+bit 3 - measuring -> automatically set to 1 whenever a conversion is running and back to 0 when the 
+results have been transferred to the data registers
+
+bit 0 - im_update -> automatically set to 1 when the NVM data are being copied to image registers
+and back to 0 when the copying is done. The data are copied at power-on-reset and before every conversion
+
+
+control registers
+-----------------
+config  - 0xF5 
+Sets the rate,filter and interface options of the device
+Writes to the config register in normal mode may be ignored in sleep mode however they are not ignored
+
+bit 7,6,5 - t_sb[2:0] -> controls inactive duration tstandby in normal mode
+bit 4,3,2 - filter[2:0] -> controls the time constant of the IIR filter 
+bit 0 - s 
+
+ctrl_meas - 0xF4 -> sets pressure and temperature data acquisition options of the device
+The register needs to be written after changing "ctrl_hum" for the changes to become effective
+
+bit 7,6,5 -  osrs_t[2:0] - controls oversampling of temperature data  
+bit 4,3,2 - osrs_p[2:0] - controls oversampling of pressure data 
+bit 1,0 - mode[1:0] - controls the sensor mode of the device
+
+*** oversampling bits same as for ctrl_hum
+
+mode[1:0]		mode
+00				sleep mode
+01 and 10		forced mode
+11				normal mode
+
+
+ctrl_hum - 0xF2 -> sets the humidity data acquisition options of the device 
+changes to this register only become efficient after a write operation to ctrl_meas
+bit 2,1,0    osr_h[2:0] controls oversampling of humidity data. 
+	value                    Humidity oversampling
+	000								skipped no humidity
+	001								oversamplingx1
+	010								oversamplingx2
+	011								oversamplingx4
+	100								oversamplingx8
+	101,others						oversamplingx16
+
+
+other reserved registers
+------------------------
+id -> 0xD0  - contains the chip identification number
+
+
+Reset register
+--------------
+0xE0 contains a soft word reset if the value of 0xB6 is written in the register, the device is reset
+
